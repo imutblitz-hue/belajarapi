@@ -3,76 +3,148 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Fake Store</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Now Airing Anime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome (opsional untuk ikon bintang rating) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <style>
-    .product-card {
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'dark-bg': '#0f172a', // slate-900
+            'card-bg': '#1e293b', // slate-800
+            'accent-blue': '#3b82f6', // blue-500
+            'text-primary': '#f1f5f9', // slate-100
+            'text-secondary': '#94a3b8', // slate-400
+          }
+        }
+      }
     }
-    .product-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  </script>
+  <style>
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    .anime-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .anime-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.3);
+      border-color: #3b82f6;
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen py-8">
-  <div class="container mx-auto px-4">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Fake Store Products</h1>
+<body class="bg-dark-bg text-text-primary min-h-screen p-4 md:p-6">
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-accent-blue to-blue-400 bg-clip-text text-transparent">
+        Now Airing Anime
+      </h1>
+      <p class="text-text-secondary mt-2">Seasonal anime currently on air</p>
+    </header>
 
-    <!-- Loading -->
-    <div id="loading" class="text-center text-gray-600">Loading products...</div>
+    <!-- Loading Skeleton -->
+    <div id="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- Generate 8 skeleton cards -->
+      <template id="skeleton-template">
+        <div class="bg-card-bg rounded-xl overflow-hidden border border-slate-700">
+          <div class="skeleton w-full h-48"></div>
+          <div class="p-4">
+            <div class="skeleton h-5 w-3/4 mb-2 rounded"></div>
+            <div class="skeleton h-4 w-1/2 rounded"></div>
+          </div>
+        </div>
+      </template>
+    </div>
 
-    <!-- Product Grid -->
-    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
+    <!-- Anime Grid (will be populated by JS) -->
+    <div id="anime-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+
+    <!-- Error Message -->
+    <div id="error" class="hidden text-center text-red-400 mt-10 text-lg"></div>
   </div>
 
   <script>
-    const productGrid = document.getElementById('product-grid');
-    const loading = document.getElementById('loading');
+    const loadingEl = document.getElementById('loading');
+    const animeGrid = document.getElementById('anime-grid');
+    const errorEl = document.getElementById('error');
+    const skeletonTemplate = document.getElementById('skeleton-template');
 
-    async function fetchProducts() {
+    // Render skeleton loaders
+    for (let i = 0; i < 8; i++) {
+      loadingEl.appendChild(skeletonTemplate.content.cloneNode(true));
+    }
+
+    // Fetch anime data
+    async function fetchNowAiringAnime() {
       try {
-        const res = await fetch('https://fakestoreapi.com/products');
-        const products = await res.json();
-
-        // Sembunyikan loading, tampilkan grid
-        loading.classList.add('hidden');
-        productGrid.classList.remove('hidden');
-
-        // Render produk
-        productGrid.innerHTML = products.map(product => `
-          <div class="product-card bg-white rounded-lg shadow-md overflow-hidden">
-            <img src="${product.image}" alt="${product.title}" class="w-full h-48 object-contain bg-gray-200 p-4" />
-            <div class="p-4">
-              <h2 class="text-sm font-semibold text-gray-800 line-clamp-2 h-12">${product.title}</h2>
-              <p class="text-gray-500 text-xs mt-1">${product.category}</p>
-              <div class="mt-2 flex items-center">
-                <div class="flex text-yellow-400">
-                  ${Array.from({ length: 5 }).map((_, i) =>
-                    i < Math.floor(product.rating.rate)
-                      ? '<i class="fas fa-star"></i>'
-                      : i < Math.ceil(product.rating.rate)
-                      ? '<i class="fas fa-star-half-alt"></i>'
-                      : '<i class="far fa-star"></i>'
-                  ).join('')}
-                </div>
-                <span class="text-gray-600 text-xs ml-1">(${product.rating.count})</span>
-              </div>
-              <p class="mt-2 text-lg font-bold text-indigo-600">$${product.price.toFixed(2)}</p>
-              <p class="text-gray-600 text-xs mt-2 line-clamp-2">${product.description}</p>
-            </div>
-          </div>
-        `).join('');
-      } catch (error) {
-        loading.textContent = 'Failed to load products.';
-        console.error(error);
+        const response = await fetch('https://api.jikan.moe/v4/seasons/now?sfw');
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+        return data.data;
+      } catch (err) {
+        showError('Failed to load anime. Please try again later.');
+        return [];
       }
     }
 
-    fetchProducts();
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+      loadingEl.classList.add('hidden');
+    }
+
+    function renderAnime(animeList) {
+      animeGrid.innerHTML = '';
+      animeList.forEach(anime => {
+        const card = document.createElement('div');
+        card.className = 'anime-card bg-card-bg rounded-xl overflow-hidden border border-slate-700';
+
+        // Format episode info
+        const episodes = anime.episodes ? `Ep: ${anime.aired.episodes || '?'}` : 'Ongoing';
+
+        card.innerHTML = `
+          <div class="relative">
+            <img 
+              src="${anime.images.jpg.large_image_url || anime.images.jpg.image_url || 'https://placehold.co/300x450/1e293b/94a3b8?text=No+Image'}" 
+              alt="${anime.title}" 
+              class="w-full h-48 object-cover"
+              onerror="this.src='https://placehold.co/300x450/1e293b/94a3b8?text=No+Image'"
+            />
+            <div class="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+              ${episodes}
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-semibold line-clamp-2 text-text-primary">${anime.title}</h3>
+            <div class="mt-2 flex items-center text-sm text-text-secondary">
+              <span>⭐ ${anime.score ? anime.score.toFixed(2) : 'N/A'}</span>
+              <span class="mx-2">•</span>
+              <span>${anime.type || 'TV'}</span>
+            </div>
+          </div>
+        `;
+        animeGrid.appendChild(card);
+      });
+    }
+
+    // Initialize
+    fetchNowAiringAnime().then(animeList => {
+      loadingEl.classList.add('hidden');
+      if (animeList.length > 0) {
+        animeGrid.classList.remove('hidden');
+        renderAnime(animeList);
+      } else {
+        showError('No anime found for this season.');
+      }
+    });
   </script>
 </body>
 </html>
