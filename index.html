@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fake Store</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome (opsional untuk ikon bintang rating) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .product-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+  <div class="container mx-auto px-4">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Fake Store Products</h1>
+
+    <!-- Loading -->
+    <div id="loading" class="text-center text-gray-600">Loading products...</div>
+
+    <!-- Product Grid -->
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 hidden"></div>
+  </div>
+
+  <script>
+    const productGrid = document.getElementById('product-grid');
+    const loading = document.getElementById('loading');
+
+    async function fetchProducts() {
+      try {
+        const res = await fetch('https://fakestoreapi.com/products');
+        const products = await res.json();
+
+        // Sembunyikan loading, tampilkan grid
+        loading.classList.add('hidden');
+        productGrid.classList.remove('hidden');
+
+        // Render produk
+        productGrid.innerHTML = products.map(product => `
+          <div class="product-card bg-white rounded-lg shadow-md overflow-hidden">
+            <img src="${product.image}" alt="${product.title}" class="w-full h-48 object-contain bg-gray-200 p-4" />
+            <div class="p-4">
+              <h2 class="text-sm font-semibold text-gray-800 line-clamp-2 h-12">${product.title}</h2>
+              <p class="text-gray-500 text-xs mt-1">${product.category}</p>
+              <div class="mt-2 flex items-center">
+                <div class="flex text-yellow-400">
+                  ${Array.from({ length: 5 }).map((_, i) =>
+                    i < Math.floor(product.rating.rate)
+                      ? '<i class="fas fa-star"></i>'
+                      : i < Math.ceil(product.rating.rate)
+                      ? '<i class="fas fa-star-half-alt"></i>'
+                      : '<i class="far fa-star"></i>'
+                  ).join('')}
+                </div>
+                <span class="text-gray-600 text-xs ml-1">(${product.rating.count})</span>
+              </div>
+              <p class="mt-2 text-lg font-bold text-indigo-600">$${product.price.toFixed(2)}</p>
+              <p class="text-gray-600 text-xs mt-2 line-clamp-2">${product.description}</p>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        loading.textContent = 'Failed to load products.';
+        console.error(error);
+      }
+    }
+
+    fetchProducts();
+  </script>
+</body>
+</html>
